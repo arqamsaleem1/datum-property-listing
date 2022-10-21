@@ -78,6 +78,7 @@ class Datum_Property_Listing {
 		$this->set_locale();
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
+		$this->register_ajax_callbacks();
 
 	}
 
@@ -156,6 +157,7 @@ class Datum_Property_Listing {
 
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
+		$this->loader->add_action( 'admin_menu', $plugin_admin, 'built_admin_menu' );
 
 	}
 
@@ -174,7 +176,355 @@ class Datum_Property_Listing {
 		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
 
 	}
+	/**
+	 * Ajax hooks registration callback.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 */
+	function register_ajax_callbacks() {
+		add_action( 'wp_ajax_callback_save_form_data', array( $this, 'callback_save_form_data' ) );
+		//add_action( 'wp_ajax_nopriv_callback_save_form_data', array( $this, 'callback_save_form_data' ) );
+		add_action( 'wp_ajax_callback_import_csv_file', array( $this, 'callback_import_csv_file' ) );
+		//add_action( 'wp_ajax_nopriv_callback_import_csv_file', array( $this, 'callback_import_csv_file' ) );
+		add_action( 'wp_ajax_callback_edit_property', array( $this, 'callback_edit_property' ) );
+		//add_action( 'wp_ajax_nopriv_callback_edit_property', array( $this, 'callback_edit_property' ) );
+		add_action( 'wp_ajax_callback_delete_property', array( $this, 'callback_delete_property' ) );
+		add_action( 'wp_ajax_callback_update_property', array( $this, 'callback_update_property' ) );
+		//add_action( 'wp_ajax_nopriv_callback_delete_property', array( $this, 'callback_delete_property' ) );
+	}
 
+	/**
+	 * Ajax callback to get submitted data and prepare to save in the database.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_save_form_data() {
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+
+		$received_data = array();
+		
+		$received_data['name']			= sanitize_text_field( $_POST['postedData']['name'] );
+		$received_data['type']			= sanitize_text_field( $_POST['postedData']['type'] );
+		$received_data['price']			= sanitize_text_field( $_POST['postedData']['price'] );
+		$received_data['district']		= sanitize_text_field( $_POST['postedData']['district'] );
+		$received_data['longitude']		= sanitize_text_field( $_POST['postedData']['longitude'] );
+		$received_data['latitude']		= sanitize_text_field( $_POST['postedData']['latitude'] );
+		$received_data['picture']		= sanitize_text_field( $_POST['postedData']['picture'] );
+
+		$validate_message_escaped = $this->validate_form_data( $received_data );
+		
+		if ( isset( $validate_message_escaped ) && strlen( $validate_message_escaped ) > 1 ) {
+			wp_send_json_error( __( $validate_message_escaped, 'datum-property-listing' ) );
+		}
+		
+		if( ! empty( $received_data ) ) {
+			$result = $this->save_form_data( $received_data );
+		}
+
+		if( $result ) {
+			wp_send_json( esc_html__( 'Property is added Successfully', 'datum-property-listing' ) );
+		}
+		else{
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+		die();
+	}
+	
+	/**
+	 * Ajax callback to update property data in the database.
+	 * 
+	 * It will receive the updated data for an existing property
+	 * and will prepare it to update into the database.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_update_property() {
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+
+		$received_data = array();
+		
+		$received_data['name']			= sanitize_text_field( $_POST['postedData']['name'] );
+		$received_data['property_id']	= sanitize_text_field( $_POST['postedData']['propertyId'] );
+		$received_data['type']			= sanitize_text_field( $_POST['postedData']['type'] );
+		$received_data['price']			= sanitize_text_field( $_POST['postedData']['price'] );
+		$received_data['district']		= sanitize_text_field( $_POST['postedData']['district'] );
+		$received_data['longitude']		= sanitize_text_field( $_POST['postedData']['longitude'] );
+		$received_data['latitude']		= sanitize_text_field( $_POST['postedData']['latitude'] );
+		$received_data['picture']		= sanitize_text_field( $_POST['postedData']['picture'] );
+
+		$validate_message_escaped = $this->validate_form_data( $received_data );
+		
+		if ( isset( $validate_message_escaped ) && strlen( $validate_message_escaped ) > 1 ) {
+			wp_send_json_error( __( $validate_message_escaped, 'datum-property-listing' ) );
+		}
+		
+		if( ! empty( $received_data ) ) {
+			$result = $this->update_form_data( $received_data );
+		}
+
+		if( $result ) {
+			wp_send_json( esc_html__( 'Property is updated Successfully', 'datum-property-listing' ) );
+		}
+		else {
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+		die();
+	}
+	
+	/**
+	 * Ajax callback to Edit property in the database.
+	 * 
+	 * It will call upon edit button click and will fetch
+	 * the record and will populate it into the update form.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_edit_property() {
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+		
+		$current_property_id = sanitize_text_field( $_POST['rowID'] );
+
+		$result = $this->get_property( $current_property_id );
+
+		if( $result ) {
+			wp_send_json( $result );
+		}
+		else{
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+		die();
+	}
+	
+	/**
+	 * Ajax callback to delete property from database.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_delete_property() {
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+		
+		$current_property_id = sanitize_text_field( $_POST['rowID'] );
+
+		$result = $this->delete_form_data( $current_property_id );
+
+		if( $result ) {
+			wp_send_json( esc_html__( 'Property is deleted Successfully', 'datum-property-listing' ) );
+		}
+		else{
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+		die();
+	}
+
+	/**
+	 * Ajax callback to import CSV file.
+	 * 
+	 * This function will receive .csv file from AJAX
+	 * and will import it into the database.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_import_csv_file() {
+		global $wpdb;
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+
+		$table_name = $wpdb->prefix . 'datum_property_listing';
+		$import_count = 0;
+
+		$uploaded_file = wp_upload_bits( $_FILES['dplFile']["name"], null, file_get_contents( $_FILES['dplFile']["tmp_name"] ));
+		$csv_to_array = array_map( 'str_getcsv', file( $uploaded_file['url'] ) );
+		
+		foreach ( $csv_to_array as $key => $value ) {
+			if ( $key == 0 )
+			  continue;
+			
+			  $data = array( 
+				'name' 		=> $value[1],
+				'type'		=> $value[2],
+				'price'		=> $value[3],
+				'district'	=> $value[4],
+				'latitude'	=> $value[5],
+				'longitude'	=> $value[6],
+				'picture'	=> $value[7],
+
+			);	
+
+			$status = $wpdb->insert( $table_name, $data );
+			if ( $status ) {
+				$import_count++;
+			}
+
+			/* $get1 = $wpdb->get_row( "SELECT * FROM $table_name WHERE id=$id", OBJECT );
+			$get2 = $wpdb->get_row( "SELECT * FROM $table_name WHERE province_title='$province_title'", OBJECT );*/
+			
+			/* if (isset( $get1 ) or isset( $get2 )) {
+				continue;
+			}
+			else{
+				
+			}  */
+			
+		}
+		if( $import_count > 0 ) {
+			wp_send_json( esc_html__( "$import_count Properties are imported Successfully", 'datum-property-listing' ) );
+		}
+		else{
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+
+		die();
+	}
+
+	/**
+	 * Saving submitted data to the database.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 */
+	function save_form_data( $form_data ) {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'datum_property_listing';
+		
+		$data = array( 
+			'name'		=> $form_data['name'],
+			'type'		=> $form_data['type'],
+			'price'		=> $form_data['price'],
+			'district'	=> $form_data['district'],
+			'latitude'	=> $form_data['latitude'],
+			'longitude'	=> $form_data['longitude'],
+			'picture'	=> $form_data['picture'],
+		);
+		
+		$status = $wpdb->insert( $table_name, $data );
+		return $status;
+	}
+	
+	/**
+	 * Update submitted data to the database for
+	 * a specific property.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 */
+	function update_form_data( $form_data ) {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'datum_property_listing';
+		
+		$data = array( 
+			'name'		=> $form_data['name'],
+			'type'		=> $form_data['type'],
+			'price'		=> $form_data['price'],
+			'district'	=> $form_data['district'],
+			'latitude'	=> $form_data['latitude'],
+			'longitude'	=> $form_data['longitude'],
+			'picture'	=> $form_data['picture'],
+		);
+		$where = array( 'id' => $form_data['property_id'] );
+
+		$status = $wpdb->update( $table_name, $data, $where );
+		//$status = $wpdb->insert( $table_name, $data );
+		
+		return $status;
+	}
+	
+	/**
+	 * Get property from the database.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 */
+	function get_property( $property_id ) {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'datum_property_listing';
+		
+		$result = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $property_id ) );
+
+		return $result;
+	}
+	
+	/**
+	 * Deleting data from the database.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 */
+	function delete_form_data( $property_id ) {
+		global $wpdb;
+
+		$table_name = $wpdb->prefix . 'datum_property_listing';
+		
+		$status = $wpdb->delete( 
+			$table_name, 
+			['id' => $property_id],
+			['%d'], // verifying id format
+		);
+
+
+		return $status;
+	}
+
+	/**
+	 * Function to validate data submit through the enquiry form.
+	 *
+	 * @since    1.0.0
+	 */
+	public function validate_form_data( $data_to_validate ) {
+		$notices = '';
+		$allowed_types = array( 'land', 'home', 'condos', 'business', 'commercial' );
+
+		if ( empty( $data_to_validate['name'] ) || strlen( $data_to_validate['name'] ) > 100 ) {
+			$notices = $notices.'<li>' . esc_html__( 'Name is not valid.', 'datum-property-listing' ) . '</li>';
+		}
+		//if ( empty( $data_to_validate['type'] ) || in_array( $data_to_validate['type'], $allowed_types ) ) {
+		if ( empty( $data_to_validate['type'] ) ) {
+			$notices = $notices.'<li>' . esc_html__( 'Type is not valid. '.$data_to_validate['type'], 'datum-property-listing' ) . '</li>';
+		}
+		if ( empty( $data_to_validate['price'] ) ) {
+			$notices = $notices.'<li>' . esc_html__( 'Price is empty.', 'datum-property-listing' ) . '</li>';
+		}
+		if ( empty( $data_to_validate['district'] ) ) {
+			$notices = $notices.'<li>' . esc_html__( 'District is empty.', 'datum-property-listing' ) . '</li>';
+		}
+		if ( empty( $data_to_validate['longitude'] ) ) {
+			$notices = $notices.'<li>' . esc_html__( 'Longitude is empty.', 'datum-property-listing' ) . '</li>';
+		}
+		if ( empty( $data_to_validate['latitude'] ) ) {
+			$notices = $notices.'<li>' . esc_html__( 'Latitude is empty.', 'datum-property-listing' ) . '</li>';
+		}
+		if ( empty( $data_to_validate['picture'] ) ) {
+			$notices = $notices.'<li>' . esc_html__( 'Picture is empty.', 'datum-property-listing' ) . '</li>';
+		}
+
+		return $notices;
+	}
 	/**
 	 * Run the loader to execute all of the hooks with WordPress.
 	 *

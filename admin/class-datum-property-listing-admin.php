@@ -62,7 +62,6 @@ class Datum_Property_Listing_Admin {
 	public function enqueue_styles() {
 
 		/**
-		 * This function is provided for demonstration purposes only.
 		 *
 		 * An instance of this class should be passed to the run() function
 		 * defined in Datum_Property_Listing_Loader as all of the hooks are defined
@@ -85,7 +84,6 @@ class Datum_Property_Listing_Admin {
 	public function enqueue_scripts() {
 
 		/**
-		 * This function is provided for demonstration purposes only.
 		 *
 		 * An instance of this class should be passed to the run() function
 		 * defined in Datum_Property_Listing_Loader as all of the hooks are defined
@@ -96,8 +94,93 @@ class Datum_Property_Listing_Admin {
 		 * class.
 		 */
 
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/datum-property-listing-admin.js', array( 'jquery' ), $this->version, false );
+		wp_enqueue_script( 
+			$this->plugin_name, 
+			plugin_dir_url( __FILE__ ) . 'js/datum-property-listing-admin.js', 
+			array( 'jquery' ), $this->version, 
+			true 
+		);
+		wp_localize_script( 
+			$this->plugin_name,
+			'dpl_plugin_ajax_url', 
+		 	array( 
+		 		'ajax_url' => admin_url( 'admin-ajax.php' ),
+		 		'security'  => wp_create_nonce( 'datum-property-listing-nonce' ),
+			)
+		);
 
 	}
 
+	/**
+	 * Callback function to create Plugin's menu in Admin Dashboard,
+	 * will passed into the hook in Datum_Property_Listing class.
+	 */
+	public function built_admin_menu() {
+		add_menu_page( 'All properties', 'Datum Listing', 'manage_options', 'dpl_settings', array( $this, 'dpl_setting_page_callback' ));
+		add_submenu_page( 'dpl_settings', 'Add new', 'Add new', 'manage_options', 'dpl_settings_add_new', array( $this, 'dpl_settings_add_new_callback' ) );
+		add_submenu_page( 'dpl_settings', 'Import Properties', 'Import', 'manage_options', 'dpl_settings_import', array( $this, 'dpl_settings_import_callback' ) );
+	}
+
+	/**
+	 * Callaback function for admin menu
+	 */
+	function dpl_setting_page_callback() {
+		$results = $this->get_all_properties_listing();
+
+		load_template( plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/datum-property-listing-admin-display.php', 
+			true,
+			array(
+				'entries' => $results[0],
+				'total_number_of_pages' => $results[1],
+			)
+		);
+		//load_template( plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/datum-property-listing-admin-display.php' );
+	}
+
+	/**
+	 * Callaback function for admin sub-menu
+	 */
+	function dpl_settings_add_new_callback() {
+
+		load_template( plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/datum-property-listing-add-new.php' );
+	}
+	/**
+	 * Callaback function for admin sub-menu
+	 */
+	function dpl_settings_import_callback() {
+
+		load_template( plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/datum-property-listing-import-data.php' );
+	}
+
+	/**
+	 * Prepare result / data for properties Listing.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 */
+	function get_all_properties_listing( $page = 1 ){
+		global $wpdb;
+
+	    $results_per_page = 10;  
+	    $table_name = $wpdb->prefix . 'datum_property_listing';
+	    
+	    //find the total number of results stored in the database  
+	    $query = "SELECT * FROM $table_name;";  
+ 
+	    $results = $wpdb->get_results( $query );  
+	    $number_of_result = count( $results );  
+
+	    //determine the total number of pages available
+	    $total_number_of_pages = ceil ( $number_of_result / $results_per_page );  
+	    
+	  
+	    //determine the sql LIMIT starting number for the results on the displaying page  
+	    $page_first_result = ( $page-1 ) * $results_per_page;  
+	  
+	    //retrieve the selected results from database   
+	    $query = "SELECT * FROM $table_name LIMIT " . $page_first_result . ',' . $results_per_page;  
+	    $results = $wpdb->get_results( $query );
+
+	    return array($results, $total_number_of_pages);
+	}
 }
