@@ -183,15 +183,74 @@ class Datum_Property_Listing {
 	 * @access   private
 	 */
 	function register_ajax_callbacks() {
+		/**
+		 * Register callbacks for the admin area
+		 */
 		add_action( 'wp_ajax_callback_save_form_data', array( $this, 'callback_save_form_data' ) );
-		//add_action( 'wp_ajax_nopriv_callback_save_form_data', array( $this, 'callback_save_form_data' ) );
 		add_action( 'wp_ajax_callback_import_csv_file', array( $this, 'callback_import_csv_file' ) );
-		//add_action( 'wp_ajax_nopriv_callback_import_csv_file', array( $this, 'callback_import_csv_file' ) );
 		add_action( 'wp_ajax_callback_edit_property', array( $this, 'callback_edit_property' ) );
-		//add_action( 'wp_ajax_nopriv_callback_edit_property', array( $this, 'callback_edit_property' ) );
 		add_action( 'wp_ajax_callback_delete_property', array( $this, 'callback_delete_property' ) );
 		add_action( 'wp_ajax_callback_update_property', array( $this, 'callback_update_property' ) );
-		//add_action( 'wp_ajax_nopriv_callback_delete_property', array( $this, 'callback_delete_property' ) );
+		/**
+		 * Register callbacks for the frontend area
+		 */
+		add_action( 'wp_ajax_callback_get_all_properties', array( $this, 'callback_get_all_properties' ) );
+		add_action( 'wp_ajax_nopriv_callback_get_all_properties', array( $this, 'callback_get_all_properties' ) );
+		add_action( 'wp_ajax_callback_filter_properties', array( $this, 'callback_filter_properties' ) );
+		add_action( 'wp_ajax_nopriv_callback_filter_properties', array( $this, 'callback_filter_properties' ) );
+	}
+
+	/**
+	 * Ajax callback to get properties data from database,
+	 * and provide to Ajax to show on the frontend template.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_get_all_properties() {
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+
+		$result = $this->get_all_properties_listing();
+
+		if( $result ) {
+			wp_send_json( $result );
+		}
+		else{
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+		die();
+	}
+	
+	/**
+	 * Ajax callback to get filtered properties data from database,
+	 * and provide to Ajax to show on the frontend template.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_filter_properties() {
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+		//wp_send_json(  );
+		$filter_params = $_POST['filterParams'];
+		$params = array();
+
+		$result = $this->get_all_properties_listing( 1, $filter_params );
+
+		if( $result ) {
+			wp_send_json( $result );
+		}
+		else{
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+		die();
 	}
 
 	/**
@@ -365,9 +424,9 @@ class Datum_Property_Listing {
 			
 			  $data = array( 
 				'name' 		=> $value[1],
-				'type'		=> $value[2],
+				'type'		=> strtolower( $value[2] ),
 				'price'		=> $value[3],
-				'district'	=> $value[4],
+				'district'	=> strtolower( $value[4] ),
 				'latitude'	=> $value[5],
 				'longitude'	=> $value[6],
 				'picture'	=> $value[7],
@@ -525,6 +584,59 @@ class Datum_Property_Listing {
 
 		return $notices;
 	}
+
+	/**
+	 * Prepare result / data for properties Listing.
+	 *
+	 * @since    1.0.0
+	 * @access   private
+	 */
+	function get_all_properties_listing( $page = 1, $params = array() ){
+		global $wpdb;
+		$where_clause = '';
+
+		/**
+		 * Prepare where clause
+		 */
+		if ( count( $params ) > 0 ) {
+			$where_clause = ( $params['name'] ) ? $where_clause . " name LIKE '%". $params['name'] . "%'": $where_clause .'';
+			$where_clause = ( strpos( $where_clause, 'name') !== false ) ? $where_clause . " AND ": $where_clause .'';
+			$where_clause = ( $params['type'] ) ? $where_clause . " type='". $params['type'] . "'": $where_clause .'';
+			$where_clause = ( strpos( $where_clause, 'type') !== false ) ? $where_clause . " AND ": $where_clause .'';
+			$where_clause = ( $params['district'] ) ? $where_clause . " district='". $params['district'] . "'": $where_clause .'';
+			$where_clause = ( strpos( $where_clause, 'district') !== false ) ? $where_clause . " AND ": $where_clause .'';
+			$where_clause = ( $params['priceMin'] && $params['priceMax'] ) ? $where_clause . " price BETWEEN ". $params['priceMin'] . " AND " . $params['priceMax'] . "": $where_clause .'';
+		}
+	    
+		$results_per_page = 10;  
+	    $table_name = $wpdb->prefix . 'datum_property_listing';
+	    
+	    //find the total number of results stored in the database  
+	    $query = "SELECT * FROM $table_name;";  
+ 
+	    $results = $wpdb->get_results( $query );  
+	    $number_of_result = count( $results );  
+
+	    //determine the total number of pages available
+	    $total_number_of_pages = ceil ( $number_of_result / $results_per_page );  
+	    
+	  
+	    //determine the sql LIMIT starting number for the results on the displaying page  
+	    $page_first_result = ( $page-1 ) * $results_per_page;  
+	  
+	    //retrieve the selected results from database   
+	    $query = "SELECT * FROM $table_name";  
+		if ( count( $params ) > 0 ) {
+			$query = $query . " WHERE " . $where_clause ;
+			/* echo $query;
+			die(); */
+		}
+		$query = $query . " LIMIT " . $page_first_result . ',' . $results_per_page;
+	    $results = $wpdb->get_results( $query );
+
+	    return array( $results, $total_number_of_pages );
+	}
+
 	/**
 	 * Run the loader to execute all of the hooks with WordPress.
 	 *

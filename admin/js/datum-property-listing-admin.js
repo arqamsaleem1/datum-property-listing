@@ -1,7 +1,7 @@
 (function( $ ) {
 	'use strict';
 	
-	jQuery("#update-form-area").hide();
+	jQuery( "#update-form-area" ).hide();
 
 	/**
 	 * Script to handle submit button onClick callback,
@@ -9,8 +9,8 @@
 	 * shows error messages if required or send a post request
 	 * using AJAX.
 	 */
-	$('#datum-property-listing-submit').click(function() {
-		console.log("submit buton clicked");
+	$( '#datum-property-listing-submit' ).click( function() {
+
 		let formData		= {};
 		let validateForm 	= '';
 
@@ -25,8 +25,8 @@
 		validateForm = validateFormData( formData );
 
 		if ( validateForm != '' ) {
-			$("form div.error-notices ul").html(validateForm);
-			$("form div.error-notices").addClass('show');
+			$( "form div.error-notices ul").html(validateForm);
+			$( "form div.error-notices").addClass('show');
 			return false;
 		}
 		
@@ -40,19 +40,19 @@
 				if( ! response == '' ) {
 					if( response.success == false ) {
 
-						$("form div.error-notices ul").html( response.data );
-						$("form div.error-notices").addClass('show');
+						$( "form div.error-notices ul" ).html( response.data );
+						$( "form div.error-notices" ).addClass( 'show' );
 					}
 					else{
 						//Removing existing notices
 						$( '.success-message' ).remove();
-						$("form div.error-notices ul li").remove();
-						$("form div.error-notices").removeClass('show');
+						$( "form div.error-notices ul li" ).remove();
+						$( "form div.error-notices" ).removeClass( 'show' );
 
 						//Clear the previous data in the form
-						$('form').find("input[type=text],input[type=number], select").val("");
+						$( 'form' ).find( "input[type=text],input[type=number], select" ).val("");
 						//Show the success message
-						$("#dpl-wrapper").append( '<p class="success-message">' + response + '</p>' );
+						$( "#dpl-wrapper" ).append( '<p class="success-message">' + response + '</p>' );
 					}
 				}
 			}
@@ -63,17 +63,17 @@
 	 * This script is responsible for showing WordPress Media uploader
 	 * at upload picture button clicked in the admin area.
 	 */
-	$('#dpl-picture-upload-btn').click(function(e) {
+	$( '#dpl-picture-upload-btn' ).click( function(e) {
         e.preventDefault();
         var image = wp.media({ 
             title: 'Upload Image',
             // mutiple: true if you want to upload multiple files at once
             multiple: false
         }).open()
-        .on('select', function(e) {
+        .on( 'select' , function( e ) {
             
 			// This will return the selected image from the Media Uploader, the result is an object
-            var uploaded_image = image.state().get('selection').first();
+            var uploaded_image = image.state().get( 'selection' ).first();
             
 			// We convert uploaded_image to a JSON object to make accessing it easier
             // Output to the console uploaded_image
@@ -82,8 +82,8 @@
             var image_url = uploaded_image.toJSON().url;
             
 			// Let's assign the url value to the input field
-            $('#dpl_picture_url').val(image_url);
-			$( '#dpl-picture-upload-btn' ).closest('.field-group').append( '<p class="success-message">Picture is selected</p>' )
+            $( '#dpl_picture_url' ).val( image_url );
+			$( '#dpl-picture-upload-btn' ).closest( '.field-group' ).append( '<p class="success-message">Picture is selected</p>' )
         });
     });
 
@@ -193,6 +193,7 @@
 						jQuery(".update-form-area").find('input[name=latitude]').val(response.latitude);
 						jQuery(".update-form-area").find('input[name=dpl_picture_url]').val(response.picture);
 						jQuery(".update-form-area").find('input[name=property_id]').val(response.id);
+						jQuery(".update-form-area").find('.dpl-image-thumb').html('<img src="' + response.picture + '">');
 
 						jQuery('html, body').animate({
 					        scrollTop: jQuery(".update-form-area").offset().top

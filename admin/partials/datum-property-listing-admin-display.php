@@ -123,8 +123,9 @@
                     </div>
                 </fieldset>
             </div>
+            <div class="dpl-image-thumb"></div>
             <div class="field-group">
-                <label for="district"><?php esc_html_e( 'Upload Picture', 'datum-property-listing' ) ?></label>
+                <label for="dpl_picture_url"><?php esc_html_e( 'Upload Picture', 'datum-property-listing' ) ?></label>
                 <input type="hidden" name="dpl_picture_url" id="dpl_picture_url" class="input-field">
                 <input type="button" name="dpl-picture-upload-btn" id="dpl-picture-upload-btn" class="button-secondary" value="Upload Image">
             </div>

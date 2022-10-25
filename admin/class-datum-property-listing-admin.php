@@ -125,7 +125,8 @@ class Datum_Property_Listing_Admin {
 	 * Callaback function for admin menu
 	 */
 	function dpl_setting_page_callback() {
-		$results = $this->get_all_properties_listing();
+		$plugin_core = new Datum_Property_Listing();
+		$results = $plugin_core->get_all_properties_listing();
 
 		load_template( plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/datum-property-listing-admin-display.php', 
 			true,
@@ -144,43 +145,12 @@ class Datum_Property_Listing_Admin {
 
 		load_template( plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/datum-property-listing-add-new.php' );
 	}
+	
 	/**
 	 * Callaback function for admin sub-menu
 	 */
 	function dpl_settings_import_callback() {
 
 		load_template( plugin_dir_path( dirname( __FILE__ ) ) . 'admin/partials/datum-property-listing-import-data.php' );
-	}
-
-	/**
-	 * Prepare result / data for properties Listing.
-	 *
-	 * @since    1.0.0
-	 * @access   private
-	 */
-	function get_all_properties_listing( $page = 1 ){
-		global $wpdb;
-
-	    $results_per_page = 10;  
-	    $table_name = $wpdb->prefix . 'datum_property_listing';
-	    
-	    //find the total number of results stored in the database  
-	    $query = "SELECT * FROM $table_name;";  
- 
-	    $results = $wpdb->get_results( $query );  
-	    $number_of_result = count( $results );  
-
-	    //determine the total number of pages available
-	    $total_number_of_pages = ceil ( $number_of_result / $results_per_page );  
-	    
-	  
-	    //determine the sql LIMIT starting number for the results on the displaying page  
-	    $page_first_result = ( $page-1 ) * $results_per_page;  
-	  
-	    //retrieve the selected results from database   
-	    $query = "SELECT * FROM $table_name LIMIT " . $page_first_result . ',' . $results_per_page;  
-	    $results = $wpdb->get_results( $query );
-
-	    return array($results, $total_number_of_pages);
 	}
 }

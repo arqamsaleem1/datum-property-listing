@@ -62,8 +62,6 @@ class Datum_Property_Listing_Public {
 	public function enqueue_styles() {
 
 		/**
-		 * This function is provided for demonstration purposes only.
-		 *
 		 * An instance of this class should be passed to the run() function
 		 * defined in Datum_Property_Listing_Loader as all of the hooks are defined
 		 * in that particular class.
@@ -85,8 +83,6 @@ class Datum_Property_Listing_Public {
 	public function enqueue_scripts() {
 
 		/**
-		 * This function is provided for demonstration purposes only.
-		 *
 		 * An instance of this class should be passed to the run() function
 		 * defined in Datum_Property_Listing_Loader as all of the hooks are defined
 		 * in that particular class.
@@ -96,7 +92,26 @@ class Datum_Property_Listing_Public {
 		 * class.
 		 */
 
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/datum-property-listing-public.js', array( 'jquery' ), $this->version, false );
+		wp_enqueue_script( 
+			$this->plugin_name . '-google-map-api', 
+			'http://maps.google.com/maps/api/js?key=AIzaSyDfJAmIr9PTNvCDc4yc3qc5xcHZWH7-x1E', 
+			array( 'jquery' ), $this->version, true 
+		);
+		
+		wp_enqueue_script( 
+			$this->plugin_name, 
+			plugin_dir_url( __FILE__ ) . 'js/datum-property-listing-public.js', 
+			array( 'jquery' ), $this->version, true 
+		);
+
+		wp_localize_script( 
+			$this->plugin_name,
+			'dpl_plugin_ajax_url', 
+		 	array( 
+		 		'ajax_url' => admin_url( 'admin-ajax.php' ),
+		 		'security'  => wp_create_nonce( 'datum-property-listing-nonce' ),
+			)
+		);
 
 	}
 
