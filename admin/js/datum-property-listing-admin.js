@@ -18,8 +18,8 @@
 		formData.type 		= $( 'select[name="type"]' ).val();
 		formData.price 		= $( 'input[name="price"]' ).val();
 		formData.district 	= $( 'input[name="district"]' ).val();
-		formData.longitude 	= $( 'input[name="longitude"]' ).val();
 		formData.latitude 	= $( 'input[name="latitude"]' ).val();
+		formData.longitude 	= $( 'input[name="longitude"]' ).val();
 		formData.picture 	= $( '#dpl_picture_url' ).val();
 		
 		validateForm = validateFormData( formData );
@@ -131,6 +131,10 @@
 	jQuery(".dpl-entries-div").on('click', '#delete-property-btn', function() {
 
 		const currentItemID = jQuery( this ).attr("data-entry-id");
+		let result = confirm("Are you sure to delete this property?");
+		if ( ! result ) {
+			return false;
+		}
 		
     	jQuery.ajax({
 		
@@ -148,11 +152,7 @@
 						
 						console.log( response );
 						$("#dpl-wrapper").prepend( '<p class="success-message">' + response + '</p>' );
-						/* jQuery(".entry-details-area").html( '<div class="entry-details">' +
-						 response + '</div>' ); */
-						/* jQuery('html, body').animate({
-					        scrollTop: jQuery(".entry-details-area").offset().top
-					    }, 2000); */
+						
 					}
 				}
 			}
@@ -220,8 +220,8 @@
 		formData.type 			= $( 'select[name="type"]' ).val();
 		formData.price 			= $( 'input[name="price"]' ).val();
 		formData.district 		= $( 'input[name="district"]' ).val();
-		formData.longitude 		= $( 'input[name="longitude"]' ).val();
 		formData.latitude 		= $( 'input[name="latitude"]' ).val();
+		formData.longitude 		= $( 'input[name="longitude"]' ).val();
 		formData.picture 		= $( '#dpl_picture_url' ).val();
 		
 		validateForm = validateFormData( formData );
@@ -262,6 +262,56 @@
 			}
 		});
 	});
+
+	/**
+	 * Script to handle pagination.
+	 */
+	 $('.dpl-pagination .page-nav').click(function( e ) {
+		
+		e.preventDefault();
+
+		let page = $( this ).attr('data-page-number');
+		
+		$.ajax({
+		
+			url:  dpl_plugin_ajax_url.ajax_url,
+			type: "post",
+			async: true,
+			data: { action: "callback_handle_page_change", 'page': page, security: dpl_plugin_ajax_url.security },
+			success: function( response ) {
+				if( ! response == '' ) {
+					if( response.success == false ) {
+						console.log('error')
+					}
+					else {
+						console.log( 'new data', response );
+						let preparedHTML = '';
+						
+						/**
+						 * Preparing HTML for updating DOM
+						 */
+
+						for ( let i = 0; i < response[0].length; i++ ) {
+							preparedHTML = preparedHTML +  '<div class="row">';
+							preparedHTML = preparedHTML +  '<div class="col"><span>' + response[0][i].name + '</span></div>';
+							preparedHTML = preparedHTML +  '<div class="col"><span>' + response[0][i].type + '</span></div>';
+							preparedHTML = preparedHTML +  '<div class="col"><span>' + response[0][i].price + '</span></div>';
+							preparedHTML = preparedHTML +  '<div class="col"><span>' + response[0][i].district + '</span></div>';
+							preparedHTML = preparedHTML +  '<div class="col actions">';
+							preparedHTML = preparedHTML +  '<button type="button" name="edit-btn" id="edit-property-btn" data-entry-id="' + response[0][i].id + '" class="action-btn button-secondary" >Edit</button>';
+							preparedHTML = preparedHTML +  '<button type="button" name="delete-btn" id="delete-property-btn" data-entry-id="' + response[0][i].id + '" class="action-btn button-secondary" >Delete</button>';
+							preparedHTML = preparedHTML +  '</div></div>';
+						}
+
+						//Updating DOM
+						$(' .dpl-table-wrap .table-body' ).html( preparedHTML );
+					}
+				}
+			}
+		});
+	});
+
+
 
 })( jQuery );
 

@@ -191,6 +191,8 @@ class Datum_Property_Listing {
 		add_action( 'wp_ajax_callback_edit_property', array( $this, 'callback_edit_property' ) );
 		add_action( 'wp_ajax_callback_delete_property', array( $this, 'callback_delete_property' ) );
 		add_action( 'wp_ajax_callback_update_property', array( $this, 'callback_update_property' ) );
+		add_action( 'wp_ajax_callback_handle_page_change', array( $this, 'callback_handle_page_change' ) );
+		
 		/**
 		 * Register callbacks for the frontend area
 		 */
@@ -198,6 +200,8 @@ class Datum_Property_Listing {
 		add_action( 'wp_ajax_nopriv_callback_get_all_properties', array( $this, 'callback_get_all_properties' ) );
 		add_action( 'wp_ajax_callback_filter_properties', array( $this, 'callback_filter_properties' ) );
 		add_action( 'wp_ajax_nopriv_callback_filter_properties', array( $this, 'callback_filter_properties' ) );
+		add_action( 'wp_ajax_callback_loadmore_properties', array( $this, 'callback_loadmore_properties' ) );
+		add_action( 'wp_ajax_nopriv_callback_loadmore_properties', array( $this, 'callback_loadmore_properties' ) );
 	}
 
 	/**
@@ -240,9 +244,37 @@ class Datum_Property_Listing {
 		}
 		//wp_send_json(  );
 		$filter_params = $_POST['filterParams'];
+		$page = $_POST['page'];
 		$params = array();
 
-		$result = $this->get_all_properties_listing( 1, $filter_params );
+		$result = $this->get_all_properties_listing( $page, 10, $filter_params );
+
+		if( $result ) {
+			wp_send_json( $result );
+		}
+		else{
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+		die();
+	}
+	
+	/**
+	 * Ajax callback to get filtered properties data from database,
+	 * and provide to Ajax to show on the frontend template.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_loadmore_properties() {
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+		//wp_send_json(  );
+		$page = $_POST['page'];
+		$filter_params = $_POST['filterParams'];
+		$result = $this->get_all_properties_listing( $page, 3, $filter_params );
 
 		if( $result ) {
 			wp_send_json( $result );
@@ -269,11 +301,11 @@ class Datum_Property_Listing {
 		$received_data = array();
 		
 		$received_data['name']			= sanitize_text_field( $_POST['postedData']['name'] );
-		$received_data['type']			= sanitize_text_field( $_POST['postedData']['type'] );
+		$received_data['type']			= strtolower( sanitize_text_field( $_POST['postedData']['type'] ) );
 		$received_data['price']			= sanitize_text_field( $_POST['postedData']['price'] );
-		$received_data['district']		= sanitize_text_field( $_POST['postedData']['district'] );
-		$received_data['longitude']		= sanitize_text_field( $_POST['postedData']['longitude'] );
+		$received_data['district']		= strtolower( sanitize_text_field( $_POST['postedData']['district'] ) );
 		$received_data['latitude']		= sanitize_text_field( $_POST['postedData']['latitude'] );
+		$received_data['longitude']		= sanitize_text_field( $_POST['postedData']['longitude'] );
 		$received_data['picture']		= sanitize_text_field( $_POST['postedData']['picture'] );
 
 		$validate_message_escaped = $this->validate_form_data( $received_data );
@@ -315,11 +347,11 @@ class Datum_Property_Listing {
 		
 		$received_data['name']			= sanitize_text_field( $_POST['postedData']['name'] );
 		$received_data['property_id']	= sanitize_text_field( $_POST['postedData']['propertyId'] );
-		$received_data['type']			= sanitize_text_field( $_POST['postedData']['type'] );
+		$received_data['type']			= strtolower( sanitize_text_field( $_POST['postedData']['type'] ) );
 		$received_data['price']			= sanitize_text_field( $_POST['postedData']['price'] );
-		$received_data['district']		= sanitize_text_field( $_POST['postedData']['district'] );
-		$received_data['longitude']		= sanitize_text_field( $_POST['postedData']['longitude'] );
+		$received_data['district']		= strtolower( sanitize_text_field( $_POST['postedData']['district'] ) );
 		$received_data['latitude']		= sanitize_text_field( $_POST['postedData']['latitude'] );
+		$received_data['longitude']		= sanitize_text_field( $_POST['postedData']['longitude'] );
 		$received_data['picture']		= sanitize_text_field( $_POST['postedData']['picture'] );
 
 		$validate_message_escaped = $this->validate_form_data( $received_data );
@@ -460,6 +492,32 @@ class Datum_Property_Listing {
 	}
 
 	/**
+	 * Ajax callback to get properties data from database,
+	 * and provide to Ajax to show on the frontend template.
+	 *
+	 * @since    1.0.0
+	 */
+	public function callback_handle_page_change() {
+
+		/** Verifying nonce **/
+		if ( ! check_ajax_referer( 'datum-property-listing-nonce', 'security', false ) ) {
+
+			wp_send_json_error( esc_html__( 'Invalid security token sent.', 'datum-property-listing' ) );
+		}
+		$current_page = ( $_POST['page'] ) ? $_POST['page'] : 1;
+		$result = $this->get_all_properties_listing( $current_page );
+
+		if( $result ) {
+			wp_send_json( $result );
+		}
+		else{
+			wp_send_json_error( esc_html__( 'action failed', 'datum-property-listing' ) );
+		}
+		die();
+	}
+
+
+	/**
 	 * Saving submitted data to the database.
 	 *
 	 * @since    1.0.0
@@ -591,7 +649,7 @@ class Datum_Property_Listing {
 	 * @since    1.0.0
 	 * @access   private
 	 */
-	function get_all_properties_listing( $page = 1, $params = array() ){
+	function get_all_properties_listing( $page = 1, $results_per_page = 10, $params = array() ){
 		global $wpdb;
 		$where_clause = '';
 
@@ -608,7 +666,6 @@ class Datum_Property_Listing {
 			$where_clause = ( $params['priceMin'] && $params['priceMax'] ) ? $where_clause . " price BETWEEN ". $params['priceMin'] . " AND " . $params['priceMax'] . "": $where_clause .'';
 		}
 	    
-		$results_per_page = 10;  
 	    $table_name = $wpdb->prefix . 'datum_property_listing';
 	    
 	    //find the total number of results stored in the database  
@@ -632,9 +689,11 @@ class Datum_Property_Listing {
 			die(); */
 		}
 		$query = $query . " LIMIT " . $page_first_result . ',' . $results_per_page;
+		/* echo $query;
+			die(); */
 	    $results = $wpdb->get_results( $query );
 
-	    return array( $results, $total_number_of_pages );
+	    return array( $results, $total_number_of_pages, $page, $query );
 	}
 
 	/**

@@ -61,7 +61,7 @@
             </div>
             <?php endforeach; ?>
         </div>
-        <div class="dpl-pagination" style="display: none;">
+        <div class="dpl-pagination">
             <?php
             for($page = 1; $page<= $args['total_number_of_pages']; $page++) {
 
@@ -113,12 +113,12 @@
                     <legend>Location:</legend>
                     <div class="row">
                         <div class="col">
-                            <label for="longitude"><?php esc_html_e( 'Longitude', 'datum-property-listing' ) ?></label>
-                            <input type="number" name="longitude" class="input-field number-field">
-                        </div>
-                        <div class="col">
                             <label for="latitude"><?php esc_html_e( 'Latitude', 'datum-property-listing' ) ?></label>
                             <input type="number" name="latitude" class="input-field number-field">
+                        </div>
+                        <div class="col">
+                            <label for="longitude"><?php esc_html_e( 'Longitude', 'datum-property-listing' ) ?></label>
+                            <input type="number" name="longitude" class="input-field number-field">
                         </div>
                     </div>
                 </fieldset>

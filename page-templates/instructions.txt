@@ -1,0 +1,4 @@
+Please follow these steps to add property listings to your frontend.
+1. Copy the template file name "property-listing-template" to your active theme's folder.
+2. Create a new page and assign this template "Datum Property Listing" to that page.
+3. Make sure you already activated the plugin.
